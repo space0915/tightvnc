@@ -2889,8 +2889,10 @@ void ClientConnection::SendAppropriateFramebufferUpdateRequest()
 
 // A ScreenUpdate message has been received
 using namespace std;
+
 #include <ctime>
 #include <time.h>
+
 
 void ClientConnection::ReadScreenUpdate() {
    std::time_t update_start_sec = std::time(NULL), update_end_sec;
@@ -2903,7 +2905,6 @@ void ClientConnection::ReadScreenUpdate() {
 	
    rects_start_sec = std::time(NULL);
 	for (int i=0; i < sut.nRects; i++) {
-
 		rfbFramebufferUpdateRectHeader surh;
 		ReadExact((char *) &surh, sz_rfbFramebufferUpdateRectHeader);
 
@@ -2935,37 +2936,49 @@ void ClientConnection::ReadScreenUpdate() {
 		// between framebuffer updates and cursor drawing operations.
 		SoftCursorLockArea(surh.r.x, surh.r.y, surh.r.w, surh.r.h);
       decoding_start_sec = std::time(NULL);
+      vnclog.Print(0, _T("Rectangel: %d / %d, "), i, sut.nRects);
 		switch (surh.encoding) {
 		case rfbEncodingRaw:
+         vnclog.Print(0, _T("Codec : Raw\n"));
 			ReadRawRect(&surh);
 			break;
 		case rfbEncodingCopyRect:
+         vnclog.Print(0, _T("Codec : CopyRect\n"));
 			ReadCopyRect(&surh);
 			break;
 		case rfbEncodingRRE:
+         vnclog.Print(0, _T("Codec : RRE\n"));
 			ReadRRERect(&surh);
 			break;
 		case rfbEncodingCoRRE:
+         vnclog.Print(0, _T("Codec : CoRRE\n"));
 			ReadCoRRERect(&surh);
 			break;
 		case rfbEncodingHextile:
+         vnclog.Print(0, _T("Codec : Hextile\n"));
 			ReadHextileRect(&surh);
 			break;
 		case rfbEncodingZlib:
+         vnclog.Print(0, _T("Codec : Zlib\n"));
 			ReadZlibRect(&surh);
 			break;
 		case rfbEncodingTight:
+         vnclog.Print(0, _T("Codec : Tight\n"));
 			ReadTightRect(&surh);
 			break;
 		case rfbEncodingZlibHex:
+         vnclog.Print(0, _T("Codec : ZlibHex\n"));
 			ReadZlibHexRect(&surh);
 			break;
 		default:
+         vnclog.Print(0, _T("Codec : Unknown\n"));
 			vnclog.Print(0, _T("Unknown encoding %d - not supported!\n"), surh.encoding);
 			break;
 		}
       decoding_end_sec = std::time(NULL);
-
+      vnclog.Print(0, _T("Decoding time costs : %ld\n"),
+            decoding_end_sec - decoding_start_sec);
+      vnclog.Print(0, _T("----------\n"));
 		// Tell the system to update a screen rectangle. Note that
 		// InvalidateScreenRect member function knows about scaling.
 		RECT rect;
@@ -2978,12 +2991,12 @@ void ClientConnection::ReadScreenUpdate() {
 	}
    rects_end_sec = std::time(NULL);
    update_end_sec = std::time(NULL);
-   vnclog.Print(0, _T("Update time costs : %ld\n"),
-                     update_end_sec - update_start_sec);
-   vnclog.Print(0, _T("\tRects time costs : %ld\n"),
-                     rects_end_sec - rects_start_sec);
-   vnclog.Print(0, _T("\t\tDecoding time costs : %ld\n"),
-                     decoding_end_sec - decoding_start_sec);
+   //vnclog.Print(0, _T("Rects : %d\n"), sut.nRects);
+   //vnclog.Print(0, _T("\tUpdate time costs : %ld\n"),
+   //                  update_end_sec - update_start_sec);
+   //vnclog.Print(0, _T("\t\tRects time costs : %ld\n"),
+   //                  rects_end_sec - rects_start_sec);
+
    
 	// Inform the other thread that an update is needed.
    PostMessage(m_hwnd, WM_REGIONUPDATED, NULL, NULL);
