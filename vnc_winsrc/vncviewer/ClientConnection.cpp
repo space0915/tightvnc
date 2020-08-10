@@ -2888,14 +2888,20 @@ void ClientConnection::SendAppropriateFramebufferUpdateRequest()
 
 
 // A ScreenUpdate message has been received
+using namespace std;
+#include <ctime>
+#include <time.h>
 
 void ClientConnection::ReadScreenUpdate() {
-
+   std::time_t update_start_sec = std::time(NULL), update_end_sec;
+   std::time_t rects_start_sec, rects_end_sec;
+	std::time_t decoding_end_sec, decoding_start_sec;
 	rfbFramebufferUpdateMsg sut;
 	ReadExact((char *) &sut, sz_rfbFramebufferUpdateMsg);
     sut.nRects = Swap16IfLE(sut.nRects);
 	if (sut.nRects == 0) return;
 	
+   rects_start_sec = std::time(NULL);
 	for (int i=0; i < sut.nRects; i++) {
 
 		rfbFramebufferUpdateRectHeader surh;
@@ -2928,7 +2934,7 @@ void ClientConnection::ReadScreenUpdate() {
 		// If *Cursor encoding is used, we should prevent collisions
 		// between framebuffer updates and cursor drawing operations.
 		SoftCursorLockArea(surh.r.x, surh.r.y, surh.r.w, surh.r.h);
-
+      decoding_start_sec = std::time(NULL);
 		switch (surh.encoding) {
 		case rfbEncodingRaw:
 			ReadRawRect(&surh);
@@ -2958,6 +2964,7 @@ void ClientConnection::ReadScreenUpdate() {
 			vnclog.Print(0, _T("Unknown encoding %d - not supported!\n"), surh.encoding);
 			break;
 		}
+      decoding_end_sec = std::time(NULL);
 
 		// Tell the system to update a screen rectangle. Note that
 		// InvalidateScreenRect member function knows about scaling.
@@ -2968,10 +2975,18 @@ void ClientConnection::ReadScreenUpdate() {
 
 		// Now we may discard "soft cursor locks".
 		SoftCursorUnlockScreen();
-	}	
-
+	}
+   rects_end_sec = std::time(NULL);
+   update_end_sec = std::time(NULL);
+   vnclog.Print(0, _T("Update time costs : %ld\n"),
+                     update_end_sec - update_start_sec);
+   vnclog.Print(0, _T("\tRects time costs : %ld\n"),
+                     rects_end_sec - rects_start_sec);
+   vnclog.Print(0, _T("\t\tDecoding time costs : %ld\n"),
+                     decoding_end_sec - decoding_start_sec);
+   
 	// Inform the other thread that an update is needed.
-	PostMessage(m_hwnd, WM_REGIONUPDATED, NULL, NULL);
+   PostMessage(m_hwnd, WM_REGIONUPDATED, NULL, NULL);
 }	
 
 void ClientConnection::SetDormant(bool newstate)
