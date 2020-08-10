@@ -69,6 +69,9 @@ void Log::SetMode(int mode) {
 #ifdef _WIN32_WCE
 	m_toconsole = false;
 #else
+   AllocConsole();
+   m_toconsole = true;
+   /*
     if (mode & ToConsole) {
         if (!m_toconsole)
             AllocConsole();
@@ -76,6 +79,7 @@ void Log::SetMode(int mode) {
     } else {
         m_toconsole = false;
     }
+    */
 #endif
 }
 
