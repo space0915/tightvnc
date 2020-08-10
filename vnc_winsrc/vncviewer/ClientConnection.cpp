@@ -2978,7 +2978,7 @@ void ClientConnection::ReadScreenUpdate() {
       decoding_end_sec = std::time(NULL);
       vnclog.Print(0, _T("Decoding time costs : %ld\n"),
             decoding_end_sec - decoding_start_sec);
-      vnclog.Print(0, _T("----------\n"));
+
 		// Tell the system to update a screen rectangle. Note that
 		// InvalidateScreenRect member function knows about scaling.
 		RECT rect;
@@ -2992,8 +2992,9 @@ void ClientConnection::ReadScreenUpdate() {
    rects_end_sec = std::time(NULL);
    update_end_sec = std::time(NULL);
    //vnclog.Print(0, _T("Rects : %d\n"), sut.nRects);
-   //vnclog.Print(0, _T("\tUpdate time costs : %ld\n"),
-   //                  update_end_sec - update_start_sec);
+   vnclog.Print(0, _T("\tUpdate time costs : %ld\n"),
+                     update_end_sec - update_start_sec);
+   vnclog.Print(0, _T("----------\n"));
    //vnclog.Print(0, _T("\t\tRects time costs : %ld\n"),
    //                  rects_end_sec - rects_start_sec);
 

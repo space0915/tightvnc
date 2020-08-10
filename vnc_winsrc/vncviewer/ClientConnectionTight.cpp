@@ -28,12 +28,19 @@
 //
 // The bits of the ClientConnection object to do with Tight.
 
+#include <omp.h>
+
 #include "stdhdrs.h"
 #include "vncviewer.h"
 #include "ClientConnection.h"
 
 #define TIGHT_MIN_TO_COMPRESS 12
 #define TIGHT_BUFFER_SIZE (2048 * 200)
+
+using namespace std;
+
+#include <ctime>
+#include <time.h>
 
 void ClientConnection::ReadTightRect(rfbFramebufferUpdateRectHeader *pfburh)
 {
@@ -102,7 +109,10 @@ void ClientConnection::ReadTightRect(rfbFramebufferUpdateRectHeader *pfburh)
   }
 
   if (comp_ctl == rfbTightJpeg) {
+    std::time_t jpeg_start_sec = std::time(NULL), jpeg_end_sec;
     DecompressJpegRect(pfburh->r.x, pfburh->r.y, pfburh->r.w, pfburh->r.h);
+    jpeg_end_sec = std::time(NULL);
+    vnclog.Print(0, _T("\t ~ JPEG decompress time costs : %d\n"), jpeg_end_sec - jpeg_start_sec);
 	return;
   }
 
@@ -541,7 +551,8 @@ void ClientConnection::DecompressJpegRect(int x, int y, int w, int h)
     vnclog.Print(0, _T("Incorrect data received from the server.\n"));
     return;
   }
-
+  std::time_t jpeg_start_sec = std::time(NULL);
+  std::time_t jpeg_end_sec[10];
   CheckBufferSize(compressedLen);
   ReadExact(m_netbuf, compressedLen);
 
@@ -575,22 +586,32 @@ void ClientConnection::DecompressJpegRect(int x, int y, int w, int h)
   rowPointer[0] = (JSAMPROW)m_zlibbuf;
 
   COLORREF *pixelPtr;
+  omp_set_num_threads(8);
+
   for (int dy = 0; cinfo.output_scanline < cinfo.output_height; dy++) {
+//#pragma omp parallel
     jpeg_read_scanlines(&cinfo, rowPointer, 1);
-    if (jpegError) {
-      break;
+    jpeg_end_sec[0] = std::time(NULL);
+    if (!jpegError) {
+      //break;111
+    //}
+      pixelPtr = (COLORREF *)&m_zlibbuf[maxRowWidth*4];
+//#pragma omp parallel for
+      for (int dx = 0; dx < w; dx++) {
+        *pixelPtr++ = COLOR_FROM_PIXEL24_ADDRESS(&m_zlibbuf[dx*3]);
+      }
+      SETPIXELS_NOCONV(&m_zlibbuf[maxRowWidth*4], x, y + dy, w, 1);
     }
-    pixelPtr = (COLORREF *)&m_zlibbuf[maxRowWidth*4];
-    for (int dx = 0; dx < w; dx++) {
-      *pixelPtr++ = COLOR_FROM_PIXEL24_ADDRESS(&m_zlibbuf[dx*3]);
-    }
-    SETPIXELS_NOCONV(&m_zlibbuf[maxRowWidth*4], x, y + dy, w, 1);
   }
+  jpeg_end_sec[1] = std::time(NULL);
 
   if (!jpegError)
     jpeg_finish_decompress(&cinfo);
 
   jpeg_destroy_decompress(&cinfo);
+  
+  for(int i=0; i<=1; i++)
+     vnclog.Print(0, _T("\t\t Time costs %d = %ld\n"), i, jpeg_end_sec[i] - jpeg_start_sec);
 }
 
 //
