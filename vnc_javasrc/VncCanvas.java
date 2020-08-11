@@ -27,6 +27,7 @@ import java.awt.image.*;
 import java.io.*;
 import java.lang.*;
 import java.util.zip.*;
+import java.util.Date;
 
 
 //
@@ -430,7 +431,7 @@ class VncCanvas extends Canvas
           long numBytesReadBefore = rfb.getNumBytesRead();
 
           rfb.startTiming();
-
+     long start = new Date().getTime();
 	  switch (rfb.updateRectEncoding) {
 	  case RfbProto.EncodingRaw:
 	    statNumRectsRaw++;
@@ -465,6 +466,7 @@ class VncCanvas extends Canvas
 	    throw new Exception("Unknown RFB rectangle encoding " +
 				rfb.updateRectEncoding);
 	  }
+     System.out.println("Update time costs : " + (new Date().getTime() - start) + " ms");
 
           rfb.stopTiming();
 
